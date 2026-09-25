@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Robot Arena</title>
+<!-- 부팅 화면(로딩 막대) + 기기 안내(폰·카톡 내장 창). 게임 코드(3.7MB)가 받아지기 전에 바로 보이도록 전부 이 파일 안에 둠 -->
+<style>#boot,#gate{z-index:50;color:#dde;text-align:center;box-sizing:border-box;background:radial-gradient(at 50% 40%,#1a2130 0%,#07080b 70%);justify-content:center;align-items:center;padding:16px;font:14px system-ui,-apple-system,Segoe UI,Malgun Gothic,sans-serif;display:flex;position:fixed;inset:0}#boot.done{opacity:0;pointer-events:none;transition:opacity .4s}.b-box{width:min(420px,100%)}.b-title{letter-spacing:.14em;color:#fff;margin-bottom:4px;font:800 34px system-ui,sans-serif}.b-sub{color:#8fa3bb;margin-bottom:26px}.b-bar{background:#ffffff1a;border-radius:3px;height:6px;overflow:hidden}.b-bar i{background:linear-gradient(90deg,#3d9bff,#8fd0ff);border-radius:3px;width:4%;height:100%;transition:width .35s;display:block}.b-bar.wait i{animation:12s cubic-bezier(.1,.7,.3,1) forwards bwait}@keyframes bwait{0%{width:4%}to{width:48%}}.b-msg{color:#8fa3bb;min-height:18px;margin-top:10px;font-size:13px}.b-err{color:#ff8a7a;white-space:pre-wrap;word-break:break-all;text-align:left;background:#ff3c281a;border-radius:8px;margin-top:14px;padding:8px 10px;font-size:12px}#gate[hidden]{display:none}.g-card{background:#0c0f14e6;border:1px solid #ffffff1f;border-radius:14px;width:min(440px,100%);padding:26px 22px}.g-ico{margin-bottom:10px;font-size:44px;line-height:1}.g-card h1{color:#fff;margin:0 0 10px;font-size:22px}.g-card p{color:#c4cfdc;margin:8px 0;line-height:1.6}.g-card b{color:#ffd35a}.g-url{gap:6px;margin:16px 0 6px;display:flex}.g-url input{color:#9fd0ff;background:#0b0e13;border:1px solid #3a4250;border-radius:8px;flex:1;min-width:0;padding:10px;font:13px monospace}.g-url button,.g-go{color:#111;cursor:pointer;white-space:nowrap;background:#ff8a2a;border:0;border-radius:8px;padding:10px 14px;font:700 14px system-ui,sans-serif}.g-ok{color:#9dff8a;min-height:16px;font-size:12px}.g-any{color:#7d8a99;cursor:pointer;background:0 0;border:0;margin-top:14px;font-size:12px;text-decoration:underline;display:inline-block}#kbar{z-index:40;color:#fdb;box-sizing:border-box;background:#281e0af2;border:1px solid #a86;border-radius:10px;align-items:center;gap:10px;max-width:calc(100vw - 20px);padding:8px 12px;font:13px system-ui,Malgun Gothic,sans-serif;display:flex;position:fixed;top:10px;left:50%;transform:translate(-50%)}#kbar button{cursor:pointer;white-space:nowrap;background:#ff8a2a;border:0;border-radius:6px;flex:none;padding:5px 10px;font:700 12px system-ui,sans-serif}#kbar .x{color:#fdb;background:0 0;padding:0 4px;font-size:16px}</style>
+  <script type="module" crossorigin src="./assets/index-VBkA4MfU.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DwJNi5LJ.css">
+</head><body>
+<canvas id="c"></canvas>
+<div id="ui"></div>
+<div id="boot"><div class="b-box">
+  <div class="b-title">ROBOT ARENA</div><div class="b-sub" id="b-sub"></div>
+  <div class="b-bar wait"><i></i></div><div class="b-msg" id="b-msg"></div><div id="b-err"></div>
+</div></div>
+<div id="gate" hidden></div>
+<script>
+// 부팅 전 검사: 폰·태블릿(마우스 없음) = 안내 화면(게임을 아예 안 켬 — 무거워서 내장 브라우저가 멈출 수 있음)
+// 카카오톡 안의 창(PC) = 위쪽 띠로 '크롬으로 열기' 권장. 언어 = 설정 → 테스트 빌드는 한국어 → 브라우저 언어(i18n.js 와 같은 순서)
+(function () {
+  var ua = navigator.userAgent, lang = null;
+  try { lang = (JSON.parse(localStorage.getItem('robotArena.settings.v1')) || {}).lang; } catch (e) {}
+  var ko = lang ? lang === 'ko' : ('test' === 'test' || /^ko/i.test(navigator.language || ''));
+  var T = ko ? {
+    sub: '만들고, 부숴라.', load: '게임 파일 받는 중… (처음엔 10초쯤 걸려요)', slow: '오래 걸리네요. 인터넷이 느리면 조금 더 기다리거나 새로고침(F5) 해 주세요.',
+    fail: '불러오기에 실패했어요. 새로고침(F5) 해 보고, 그래도 안 되면 아래 글을 복사해서 채팅방에 알려 주세요.',
+    mTitle: 'PC 전용 게임이에요', mBody: '키보드(<b>WASD</b>)와 <b>마우스</b>로 조종하는 게임이라 휴대폰·태블릿에서는 할 수 없어요.',
+    mHowLink: '<b>PC</b>에서 <b>크롬(Chrome)</b>으로 이 주소를 열어 주세요. PC 카톡에서 링크를 누르면 바로 열려요.',
+    mHowFile: '<b>PC 카톡</b>에서 이 파일을 받은 뒤, 저장된 파일을 <b>더블클릭</b>하면 열려요.',
+    copy: '주소 복사', copied: '복사했어요!', any: '그래도 열어 보기(조작 안 될 수 있음)',
+    glTitle: '그래픽을 지원하지 않는 브라우저예요', glBody: '이 게임은 WebGL2가 필요해요. <b>크롬(Chrome)</b> 최신 버전으로 열어 주세요. 크롬 설정에서 “그래픽 가속 사용”이 꺼져 있으면 켜 주세요.',
+    kbar: '카카오톡 안의 창에서는 마우스 조준이 잘 안 될 수 있어요. 주소를 복사해서 <b>크롬</b>에 붙여 넣는 걸 추천해요.'
+  } : {
+    sub: 'Build it. Break them.', load: 'Downloading game files… (about 10 s the first time)', slow: 'Taking a while. On slow internet wait a bit more or refresh (F5).',
+    fail: 'Failed to load. Refresh (F5); if it still fails, copy the text below and send it to us.',
+    mTitle: 'This game is for PC', mBody: 'It uses a keyboard (<b>WASD</b>) and a <b>mouse</b>, so it can\'t be played on phones or tablets.',
+    mHowLink: 'Open this address on a <b>PC</b> in <b>Chrome</b>.', mHowFile: 'Download this file on a <b>PC</b> and <b>double-click</b> it.',
+    copy: 'Copy link', copied: 'Copied!', any: 'Open anyway (controls may not work)',
+    glTitle: 'This browser can\'t run the graphics', glBody: 'The game needs WebGL2. Please use an up-to-date <b>Chrome</b> with hardware acceleration turned on.',
+    kbar: 'Inside the KakaoTalk window the mouse aim may not work. Copy the link and open it in <b>Chrome</b>.'
+  };
+  document.documentElement.lang = ko ? 'ko' : 'en';
+  document.getElementById('b-sub').textContent = T.sub;
+  var msg = document.getElementById('b-msg'); msg.textContent = T.load;
+  var bar = document.querySelector('.b-bar'), fill = bar.firstElementChild, done = false;
+  var slowT = setTimeout(function () { if (!done) msg.textContent = T.slow; }, 25000);
+  // main.js 가 부르는 손잡이: 진행 표시 · 끝 · 실패
+  window.__boot = {
+    step: function (pct, text) { bar.classList.remove('wait'); fill.style.width = pct + '%'; if (text) msg.textContent = text; },
+    done: function () { done = true; clearTimeout(slowT); var b = document.getElementById('boot'); fill.style.width = '100%'; b.classList.add('done'); setTimeout(function () { b.remove(); }, 450); },
+    fail: function (e) {
+      if (done) return; done = true; clearTimeout(slowT); msg.textContent = T.fail;
+      var d = document.getElementById('b-err'); d.className = 'b-err'; d.textContent = String(e && (e.stack || e.message) || e).slice(0, 600) + '\n' + ua;
+    }
+  };
+  addEventListener('error', function (e) { window.__boot.fail(e.error || e.message); });
+  addEventListener('unhandledrejection', function (e) { window.__boot.fail(e.reason); });
+
+  var isFile = location.protocol === 'file:';
+  var noMouse = !(window.matchMedia && matchMedia('(any-pointer: fine)').matches);
+  var mobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(ua) || (navigator.maxTouchPoints > 1 && noMouse);
+  var gl = false; try { gl = !!document.createElement('canvas').getContext('webgl2'); } catch (e) {}
+  function copyBox() {
+    return '<div class="g-url"><input readonly value="' + location.href.replace(/"/g, '&quot;') + '"><button class="cp">' + T.copy + '</button></div><div class="g-ok"></div>';
+  }
+  function wireCopy(root) {
+    var b = root.querySelector('.cp'); if (!b) return;
+    b.onclick = function () {
+      var inp = root.querySelector('input'), ok = root.querySelector('.g-ok');
+      var fin = function () { if (ok) ok.textContent = T.copied; };
+      inp.select();
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(inp.value).then(fin, function () { try { document.execCommand('copy'); fin(); } catch (e) {} });
+      else { try { document.execCommand('copy'); fin(); } catch (e) {} }
+    };
+  }
+  var gate = document.getElementById('gate');
+  if (mobile || !gl) {
+    window.__bootGate = true; // main.js 는 부팅하지 않고 __bootContinue 를 기다림
+    document.getElementById('boot').style.display = 'none';
+    gate.innerHTML = !gl && !mobile
+      ? '<div class="g-card"><div class="g-ico">⚠️</div><h1>' + T.glTitle + '</h1><p>' + T.glBody + '</p></div>'
+      : '<div class="g-card"><div class="g-ico">🖥️</div><h1>' + T.mTitle + '</h1><p>' + T.mBody + '</p><p>' + (isFile ? T.mHowFile : T.mHowLink) + '</p>' +
+        (isFile ? '' : copyBox()) + '<button class="g-any">' + T.any + '</button></div>';
+    gate.hidden = false; wireCopy(gate);
+    var any = gate.querySelector('.g-any');
+    if (any) any.onclick = function () { gate.remove(); document.getElementById('boot').style.display = ''; if (window.__bootContinue) window.__bootContinue(); else window.__bootGate = false; };
+  } else if (/KAKAOTALK/i.test(ua)) {
+    var k = document.createElement('div'); k.id = 'kbar';
+    k.innerHTML = '<span>' + T.kbar + '</span>' + '<input readonly style="position:absolute;left:-9999px" value="' + location.href.replace(/"/g, '&quot;') + '"><button class="cp">' + T.copy + '</button><span class="g-ok"></span><button class="x">✕</button>';
+    document.body.appendChild(k); wireCopy(k);
+    k.querySelector('.x').onclick = function () { k.remove(); };
+  }
+})();
+</script>
+</body></html>
